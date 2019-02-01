@@ -52,7 +52,7 @@ Purifier:
       # power off device when 'Off' option was selected
       - x: "Break() if state('input_select.' + room_name + '_purifier_mode') == 'Off' else Skip()"
       # power off device when PM 2.5 pollution is below 6 μg/m3
-      - x: "Break() if float(state('sensor.' + room_name + '_pm25')) < 6 else Skip()"
+      - x: "Skip() if state('input_select.' + room_name + '_purifier_mode') == 'Manual' else Break() if float(state('sensor.' + room_name + '_pm25')) < 6 else Skip()"
       # power off device when home is in 'Away' mode
       - x: "Break() if is_on('input_boolean.away') else Skip()"
       # check romm specific hours
