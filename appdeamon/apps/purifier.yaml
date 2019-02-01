@@ -1,7 +1,7 @@
 Purifier:
   module: hass_apps_loader
   class: SchedyApp
-  debug: true
+  debug: false
   expression_modules:
     math:
   # Generic actor used for controlling Xiaomi Air Purifier Pro
@@ -44,8 +44,8 @@ Purifier:
         - x: "Skip() if is_on('input_boolean.holidays') else Break()"
           weekdays: "!6-7"
         - { start: "00:00", end: "00:00" }
-#      - { weekdays: 1-5, start: "14:00", end: "7:00" }
-      - { weekdays: 1-5, start: "7:00", end: "23:00" }
+      - { weekdays: 1-5, start: "14:00", end: "7:00" }
+#      - { weekdays: 1-5, start: "7:00", end: "23:00" }
 
     check_options_and_hours:
       # power off device when 'Off' option was selected
