@@ -2,17 +2,30 @@ Thermostats:
   module: hass_apps_loader
   class: SchedyApp
   actor_type: thermostat
+  
   schedule_prepend:
-    - { x: off if state('input_select.heating_season') == 'off' else Skip() , name: "Turn thermostats OFF, this is not heating season" }
-    - { x: 36 if state('input_boolean.away') == 'init' else Skip() , name: "Turn thermostats FULL, initialize heating season" }
+    - v: off
+      rules:
+      - x: "Inherit() if state('input_select.heating_season') == 'off' else Break()"
+    - v: 36
+      rules:
+      - x: "Inherit() if state('input_select.heating_season') == 'init' else Break()"
 #    - { x: Add(input_number.tralala) if app.get_state('input_boolean.custom_heat_temp') == 'on' else Ignore() , name: "Increase temperature by custom offset" }
-    - { x: 17 if app.get_state('input_boolean.away') == 'on' else Skip() , name: "Everyone is outside for a long time" }
+    - v: 17
+      rules:
+      - x: "Inherit() if state('input_boolean.away') == 'on' else Break()"
+  
   schedule_append:
-    - { weekdays: 1-7, start: "17:30", end: "21:30", v: 22, name: "Przed snem wieczorem"  }
-    - { v: 19 }
+    - v: 22
+      rules:
+        - { weekdays: 1-7, start: "17:30", end: "21:30", v: 22, name: "Przed snem wieczorem"  }
+    # fallback, set to 19 °C
+    - v: 19
+  
   watched_entities:
     - "input_select.heating_season"
     - "input_boolean.away"
+  
   rooms:
     badroom:
       friendly_name: Sypialnia
