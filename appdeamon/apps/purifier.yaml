@@ -1,0 +1,131 @@
+Purifier:
+  module: hass_apps_loader
+  class: SchedyApp
+  debug: true
+  expression_modules:
+    math:
+  # Generic actor used for controlling Xiaomi Air Purifier Pro
+  actor_type: generic
+  send_retries: 0
+  actor_templates:
+    default:
+      attributes:
+        - attribute: 'mode'
+          values:
+            'auto':
+              service: "fan/set_speed"
+              value_parameter: 'speed'
+            'silent':
+              service: "fan/set_speed"
+              value_parameter: 'speed'
+            'favorite':
+              service: "fan/set_speed"
+              value_parameter: 'speed'
+        - attribute: "favorite_level"
+          values:
+            '_other_':
+              service: "fan/XIAOMI_MIIO_SET_FAVORITE_LEVEL"
+              value_parameter: 'level'
+        - attribute: 'state'
+          values:
+            'off':
+              service: "fan/turn_off"
+            'on':
+              service: "fan/turn_on"
+
+  schedule_prepend:
+    # 'External' mode means that purifier is controlled by sth/sbd else (xiaomi app, manually etc). DO NOT change anything
+    - x: "Abort() if state('input_select.' + room_name + '_purifier_mode') == 'External' else Skip()"
+
+  schedule_snippets:
+    salon_working_hours:
+      # whole day on weekends and holidays
+      - rules:
+        - x: "Skip() if is_on('input_boolean.holidays') else Break()"
+          weekdays: "!6-7"
+        - { start: "00:00", end: "00:00" }
+#      - { weekdays: 1-5, start: "14:00", end: "7:00" }
+      - { weekdays: 1-5, start: "7:00", end: "23:00" }
+
+    check_options_and_hours:
+      # power off device when 'Off' option was selected
+      - x: "Break() if state('input_select.' + room_name + '_purifier_mode') == 'Off' else Skip()"
+      # power off device when PM 2.5 pollution is below 6 μg/m3
+      - x: "Break() if float(state('sensor.' + room_name + '_pm25')) < 6 else Skip()"
+      # power off device when home is in 'Away' mode
+      - x: "Break() if is_on('input_boolean.away') else Skip()"
+
+    calculate_favorite_level:
+      - x: "['favorite', 16, 'on'] if float(state('sensor.' + room_name + '_pm25')) > 70 else Skip()"
+        rules:
+          - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+          - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+      - x: "['favorite', 12, 'on'] if float(state('sensor.' + room_name + '_pm25')) > 50 else Skip()"
+        rules:
+          - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+          - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+      - x: "['favorite',  9, 'on'] if float(state('sensor.' + room_name + '_pm25')) > 40 else Skip()"
+        rules:
+          - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+          - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+      - x: "['favorite',  6, 'on'] if float(state('sensor.' + room_name + '_pm25')) > 30 else Skip()"
+        rules:
+          - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+          - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+      - x: "['favorite',  4, 'on'] if float(state('sensor.' + room_name + '_pm25')) > 20 else Skip()"
+        rules:
+          - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+          - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+      - x: "['favorite',  1, 'on'] if float(state('sensor.' + room_name + '_pm25')) > 10 else Skip()"
+        rules:
+          - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+          - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+      - x: "['favorite',  0, 'on'] if float(state('sensor.' + room_name + '_pm25')) >  5 else Skip()"
+        rules:
+          - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+          - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+
+  watched_entities:
+    - "input_boolean.away"
+
+  rooms:
+    salon:
+      friendly_name: Salon
+      actors:
+        fan.salon_purifier:
+
+      schedule:
+        # Mode 'Silent': set 'Silent' speed on device, leave favorite level unchanged, turn power on
+        - x: "['silent', state('sensor.' + room_name + '_purifier_favorite_level'), 'on']"
+          rules:
+            - x: "Break() if state('input_select.' + room_name + '_purifier_mode') != 'Silent' else Skip()"
+            - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+            - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+
+        # Mode 'Auto': set 'Auto' speed on device, leave favorite level unchanged, turn power on
+        - x: "['auto', state('sensor.' + room_name + '_purifier_favorite_level'), 'on']"
+          rules:
+            - x: "Break() if state('input_select.' + room_name + '_purifier_mode') != 'Auto' else Skip()"
+            - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+            - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+
+        # Mode 'Manual': set 'Favorite' speed on device, set favorite level from input_number, turn power on
+        - x: "['favorite', math.floor(float(state('input_number.' + room_name + '_purifier_favorite_level')) or 0.0), 'on']"
+          rules:
+            - x: "Break() if state('input_select.' + room_name + '_purifier_mode') != 'Manual' else Skip()"
+            - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+            - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+
+        # Mode 'Smart': set 'Favorite' speed on device, calculate favorite level accordingly to pm 2.5, turn power on
+        - x: "Skip() if state('input_select.' + room_name + '_purifier_mode') != 'Smart' else IncludeSchedule(schedule_snippets['calculate_favorite_level'])"
+
+        # Power off as fallback: leave speed and favorite level unchanged, turn power off
+        - x: "[str(state('sensor.' + room_name + '_purifier_mode')), state('sensor.' + room_name + '_purifier_favorite_level'), 'off']"
+
+      watched_entities:
+        - "sensor.salon_pm25"
+        - "sensor.salon_purifier_mode"
+        - "sensor.salon_purifier_favorite_level"
+        - "input_select.salon_purifier_mode"
+        - "input_number.salon_purifier_favorite_level"
+        - "input_boolean.holidays"
