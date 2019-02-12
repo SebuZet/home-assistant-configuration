@@ -1,0 +1,99 @@
+Humidifier:
+  module: hass_apps_loader
+  class: SchedyApp
+  expression_modules:
+    math:
+  actor_type: generic
+  call_reversed: true
+  actor_templates:
+    default:
+      attributes:
+      - attribute: 'state'
+        values:
+          'off':
+            service: "fan/turn_off"
+          'on':
+            service: "fan/turn_on"
+      - attribute: 'mode'
+        values:
+          'auto':
+            service: "fan/set_speed"
+            value_parameter: 'speed'
+          'silent':
+            service: "fan/set_speed"
+            value_parameter: 'speed'
+          'medium':
+            service: "fan/set_speed"
+            value_parameter: 'speed'
+          'high':
+            service: "fan/set_speed"
+            value_parameter: 'speed'
+      short_values:
+      - ["off"]
+
+  schedule_prepend:
+  - x: "Abort() if state('fan.' + room_name + '_humidifier') == 'unavailable' else Skip()"
+  - x: "Abort() if state('input_select.' + room_name + '_humidifier_mode') == 'External' else Skip()"
+
+  schedule_snippets:
+    salon_working_hours:
+    - rules:
+      - x: "Skip() if is_on('input_boolean.holidays') else Break()"
+        weekdays: "!6-7"
+      - { start: "00:00", end: "00:00" }
+    - { weekdays: 1-5, start: "14:00", end: "7:00" }
+
+    check_options_and_hours:
+    # power off device when 'Off' option was selected
+    - x: "Break() if state('input_select.' + room_name + '_humidifier_mode') == 'Off' else Skip()"
+    # power off device when humidity is above selected target
+    - x: "Skip() if state('input_select.' + room_name + '_humidifier_mode') == 'Manual' else Break() if float(state('sensor.' + room_name + '_humidifier_humidity')) >= float(state('input_number.' + room_name + '_humidifier_target')) else Skip()"
+    # power off device when home is in 'Away' mode
+    - x: "Break() if is_on('input_boolean.away') else Skip()"
+    # check room specific hours
+    - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
+
+  watched_entities:
+  - "input_boolean.away"
+  - "input_boolean.holidays"
+
+  rooms:
+    salon:
+      friendly_name: Salon
+      actors:
+        fan.salon_humidifier:
+
+      schedule:
+      # Mode 'Silent': set 'Silent' speed on device, turn power on
+      - x: "['on', 'silent']"
+        rules:
+        - x: "Break() if state('input_select.' + room_name + '_humidifier_mode') != 'Silent' else Skip()"
+        - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+
+      # Mode 'Auto': set 'Auto' speed on device, turn power on
+      - x: "['on', 'auto']"
+        rules:
+        - x: "Break() if state('input_select.' + room_name + '_humidifier_mode') != 'Auto' else Skip()"
+        - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+
+      # Mode 'Medium': set 'Medium' speed on device, turn power on
+      - x: "['on', 'medium']"
+        rules:
+        - x: "Break() if state('input_select.' + room_name + '_humidifier_mode') != 'Medium' else Skip()"
+        - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+
+      # Mode 'High': set 'High' speed on device, turn power on
+      - x: "['on', 'high']"
+        rules:
+        - x: "Break() if state('input_select.' + room_name + '_humidifier_mode') != 'High' else Skip()"
+        - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
+
+      # Power off as fallback: turn power off
+      - x: "['off']"
+
+      watched_entities:
+      - "sensor.salon_humidifier_mode"
+      - "sensor.salon_humidifier_humidity"
+      - "input_select.salon_humidifier_mode"
+      - "input_number.salon_humidifier_target"
+      - "fan.salon_humidifier"
