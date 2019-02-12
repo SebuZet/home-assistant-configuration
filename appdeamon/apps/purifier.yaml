@@ -52,32 +52,32 @@ Purifier:
     # power off device when 'Off' option was selected
     - x: "Break() if state('input_select.' + room_name + '_purifier_mode') == 'Off' else Skip()"
     # power off device when PM 2.5 pollution is below 6 μg/m3
-    - x: "Skip() if state('input_select.' + room_name + '_purifier_mode') == 'Manual' else Break() if float(state('sensor.' + room_name + '_pm25')) < 6 else Skip()"
+    - x: "Skip() if state('input_select.' + room_name + '_purifier_mode') == 'Manual' else Break() if float(state('sensor.' + room_name + '_purifier_pm25')) < 6 else Skip()"
     # power off device when home is in 'Away' mode
     - x: "Break() if is_on('input_boolean.away') else Skip()"
     # check room specific hours
     - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
 
     calculate_favorite_level:
-    - x: "['on', 'favorite', 16] if float(state('sensor.' + room_name + '_pm25')) > 70 else Skip()"
+    - x: "['on', 'favorite', 16] if float(state('sensor.' + room_name + '_purifier_pm25')) > 70 else Skip()"
       rules:
       - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
-    - x: "['on', 'favorite', 12] if float(state('sensor.' + room_name + '_pm25')) > 50 else Skip()"
+    - x: "['on', 'favorite', 12] if float(state('sensor.' + room_name + '_purifier_pm25')) > 50 else Skip()"
       rules:
       - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
-    - x: "['on', 'favorite',  9] if float(state('sensor.' + room_name + '_pm25')) > 40 else Skip()"
+    - x: "['on', 'favorite',  9] if float(state('sensor.' + room_name + '_purifier_pm25')) > 40 else Skip()"
       rules:
       - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
-    - x: "['on', 'favorite',  6] if float(state('sensor.' + room_name + '_pm25')) > 30 else Skip()"
+    - x: "['on', 'favorite',  6] if float(state('sensor.' + room_name + '_purifier_pm25')) > 30 else Skip()"
       rules:
       - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
-    - x: "['on', 'favorite',  4] if float(state('sensor.' + room_name + '_pm25')) > 20 else Skip()"
+    - x: "['on', 'favorite',  4] if float(state('sensor.' + room_name + '_purifier_pm25')) > 20 else Skip()"
       rules:
       - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
-    - x: "['on', 'favorite',  1] if float(state('sensor.' + room_name + '_pm25')) > 10 else Skip()"
+    - x: "['on', 'favorite',  1] if float(state('sensor.' + room_name + '_purifier_pm25')) > 10 else Skip()"
       rules:
       - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
-    - x: "['on', 'favorite',  0] if float(state('sensor.' + room_name + '_pm25')) >  5 else Skip()"
+    - x: "['on', 'favorite',  0] if float(state('sensor.' + room_name + '_purifier_pm25')) >  5 else Skip()"
       rules:
       - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
 
@@ -117,7 +117,7 @@ Purifier:
       - x: "['off']"
 
       watched_entities:
-      - "sensor.salon_pm25"
+      - "sensor.salon_purifier_pm25"
       - "sensor.salon_purifier_mode"
       - "sensor.salon_purifier_favorite_level"
       - "input_select.salon_purifier_mode"
