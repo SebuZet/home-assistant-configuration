@@ -1,12 +1,10 @@
 Purifier:
   module: hass_apps_loader
   class: SchedyApp
-  debug: false
   expression_modules:
     math:
-  # Generic actor used for controlling Xiaomi Air Purifier Pro
   actor_type: generic
-  send_retries: 0
+  call_reversed: true
   actor_templates:
     default:
       attributes:
@@ -38,19 +36,17 @@ Purifier:
       - ["on", "silent"]
 
   schedule_prepend:
-  # 'External' mode means that purifier is controlled by sth/sbd else (xiaomi app, manually etc). DO NOT change anything
+  - x: "Abort() if state('fan.' + room_name + '_purifier') == 'unavailable' else Skip()"
   - x: "Abort() if state('input_select.' + room_name + '_purifier_mode') == 'External' else Skip()"
 
   schedule_snippets:
     salon_working_hours:
-    # whole day on weekends and holidays
     - rules:
       - x: "Skip() if is_on('input_boolean.holidays') else Break()"
         weekdays: "!6-7"
       - { start: "00:00", end: "00:00" }
     - { weekdays: 1-4, start: "14:00", end: "7:00" }
     - { weekdays:   5, start: "13:00", end: "7:00" }
-#    - { weekdays: 1-5, start: "7:00", end: "23:00" }
 
     check_options_and_hours:
     # power off device when 'Off' option was selected
@@ -59,7 +55,7 @@ Purifier:
     - x: "Skip() if state('input_select.' + room_name + '_purifier_mode') == 'Manual' else Break() if float(state('sensor.' + room_name + '_pm25')) < 6 else Skip()"
     # power off device when home is in 'Away' mode
     - x: "Break() if is_on('input_boolean.away') else Skip()"
-    # check romm specific hours
+    # check room specific hours
     - x: "IncludeSchedule(schedule_snippets[room_name + '_working_hours'])"
 
     calculate_favorite_level:
@@ -87,6 +83,7 @@ Purifier:
 
   watched_entities:
   - "input_boolean.away"
+  - "input_boolean.holidays"
 
   rooms:
     salon:
@@ -95,28 +92,28 @@ Purifier:
         fan.salon_purifier:
 
       schedule:
-      # Mode 'Silent': set 'Silent' speed on device, leave favorite level unchanged, turn power on
+      # Mode 'Silent': set 'Silent' speed on device, turn power on
       - x: "['on', 'silent']"
         rules:
         - x: "Break() if state('input_select.' + room_name + '_purifier_mode') != 'Silent' else Skip()"
         - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
 
-      # Mode 'Auto': set 'Auto' speed on device, leave favorite level unchanged, turn power on
+      # Mode 'Auto': set 'Auto' speed on device, turn power on
       - x: "['on', 'auto']"
         rules:
         - x: "Break() if state('input_select.' + room_name + '_purifier_mode') != 'Auto' else Skip()"
         - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
 
-      # Mode 'Manual': set 'Favorite' speed on device, set favorite level from input_number, turn power on
+      # Mode 'Manual': set favorite level from input_number, set 'Favorite' speed on device, turn power on
       - x: "['on', 'favorite', math.floor(float(state('input_number.' + room_name + '_purifier_favorite_level')) or 0.0)]"
         rules:
         - x: "Break() if state('input_select.' + room_name + '_purifier_mode') != 'Manual' else Skip()"
         - x: "IncludeSchedule(schedule_snippets['check_options_and_hours'])"
 
-      # Mode 'Smart': set 'Favorite' speed on device, calculate favorite level accordingly to pm 2.5, turn power on
+      # Mode 'Smart': calculate favorite level accordingly to pm 2.5, set 'Favorite' speed on device, turn power on
       - x: "Skip() if state('input_select.' + room_name + '_purifier_mode') != 'Smart' else IncludeSchedule(schedule_snippets['calculate_favorite_level'])"
 
-      # Power off as fallback: leave speed and favorite level unchanged, turn power off
+      # Power off as fallback: turn power off
       - x: "['off']"
 
       watched_entities:
@@ -125,4 +122,4 @@ Purifier:
       - "sensor.salon_purifier_favorite_level"
       - "input_select.salon_purifier_mode"
       - "input_number.salon_purifier_favorite_level"
-      - "input_boolean.holidays"
+      - "fan.salon_purifier"
