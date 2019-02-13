@@ -4,27 +4,25 @@ Thermostats:
   actor_type: thermostat
   
   schedule_prepend:
-    - v: off
-      rules:
-      - x: "Inherit() if state('input_select.heating_season') == 'off' else Break()"
-    - v: 36
-      rules:
-      - x: "Inherit() if state('input_select.heating_season') == 'init' else Break()"
-#    - { x: Add(input_number.tralala) if app.get_state('input_boolean.custom_heat_temp') == 'on' else Ignore() , name: "Increase temperature by custom offset" }
-    - v: 17
-      rules:
-      - x: "Inherit() if state('input_boolean.away') == 'on' else Break()"
+  - x: "'off' if state('input_select.heating_season') == 'No' else Skip()"
+  - x: "36  if state('input_select.heating_season') == 'Init' else Skip()"
+  - x: "17  if state('input_boolean.away') == 'on' else Skip()"
+  - x: "28  if state('input_select.heating_season') == 'Quick Heat' else Skip()"
   
   schedule_append:
-    - v: 22
-      rules:
-        - { weekdays: 1-7, start: "17:30", end: "21:30", v: 22, name: "Przed snem wieczorem"  }
-    # fallback, set to 19 °C
-    - v: 19
+  - v: 19
   
   watched_entities:
-    - "input_select.heating_season"
-    - "input_boolean.away"
+  - "input_select.heating_season"
+  - "input_boolean.away"
+  - "input_boolean.holidays"
+
+  schedule_snippets:
+    weekends_and_holidays:
+    - rules:
+      - x: "Skip() if is_on('input_boolean.holidays') else Break()"
+        weekdays: "!6-7"
+      - { start: "07:00", end: "21:30" }
   
   rooms:
     badroom:
@@ -32,27 +30,33 @@ Thermostats:
       actors:
         climate.eurotronic_eur_spiritz_wall_radiator_thermostat_heat_4:
       schedule:
-        - { weekdays: 1-5, start: "04:00", end: "07:00", v: 22, name: "Wybudzanie w tygodniu" }
-        - { weekdays: 6-7, start: "06:00", end: "08:30", v: 22, name: "Wybudzanie w weekend"  }
-#        - { weekdays: 1-7, start: "22:00", end: "05:00", x: Add(1), name: "Cieplej dla Ali" }
+      - v: 21
+        rules:
+        - { weekdays: 1-5, start: "04:00", end: "07:00" }
+        - { weekdays: 6-7, start: "05:30", end: "08:30" }
+        - x: "IncludeSchedule(schedule_snippets['weekends_and_holidays'])"
+    
     adam:
       friendly_name: Adam
       actors:
         climate.eurotronic_eur_spiritz_wall_radiator_thermostat_heat_3:
       schedule:
-        - { weekdays: 1-5, start: "05:45", end: "07:00", v: 22, name: "Wybudzanie w tygodniu" }
-        - { weekdays: 1-5, start: "15:00", end: "19:30", v: 21, name: "W domu po szkole"      }
-        - { weekdays: 6-7, start: "07:00", end: "08:30", v: 21, name: "Wybudzanie w weekend"  }
+      - v: 21
+        rules:
+        - { weekdays: 1-5, start: "05:00", end: "07:00", }
+        - { weekdays: 1-5, start: "15:00", end: "19:30" }
+        - x: "IncludeSchedule(schedule_snippets['weekends_and_holidays'])"
+
     living:
       friendly_name: Salon
       actors:
         climate.eurotronic_eur_spiritz_wall_radiator_thermostat_heat_2:
       schedule:
-        - { x: 25 if is_on('input_boolean.salon_romantic_evening') else Skip() , name: "Romantic evening" }
-        - { weekdays: 1-5, start: "04:00", end: "07:00", v: 22, name: "Poranek na tygodniu" }
-        - { weekdays: 6-7, start: "07:00", end: "18:30", v: 22, name: "Dzien w weekend"     }
-        - { weekdays: 1-5, start: "14:00", end: "21:00", v: 22, name: "Po pracy na tygodniu"}
+        - { x: 25 if is_on('input_boolean.salon_romantic_evening') else Skip() }
+        - { v: 24, weekdays: 1-5, start: "04:00", end: "07:00" }
+        - v: 23
+          rules:
+          - x: "IncludeSchedule(schedule_snippets['weekends_and_holidays'])"
+
       watched_entities:
         - "input_boolean.salon_romantic_evening"
-
-  statistics:
